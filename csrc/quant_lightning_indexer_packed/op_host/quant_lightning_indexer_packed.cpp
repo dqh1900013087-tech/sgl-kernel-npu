@@ -38,7 +38,7 @@ struct PackedApi {
     }
 };
 PackedApi& api() { static PackedApi value; return value; }
-aclDataType dtype(at::ScalarType t) {
+aclDataType toAclDtype(at::ScalarType t) {
     switch (t) {
         case at::kFloat8_e4m3fn: return ACL_FLOAT8_E4M3FN;
         case at::kByte: return ACL_UINT8;
@@ -51,7 +51,7 @@ aclDataType dtype(at::ScalarType t) {
 struct Descriptors {
     std::vector<aclTensor*> values;
     const aclTensor* add(const at::Tensor& tensor) {
-        auto* descriptor = aclCreateTensor(tensor.sizes().data(), tensor.dim(), dtype(tensor.scalar_type()),
+        auto* descriptor = aclCreateTensor(tensor.sizes().data(), tensor.dim(), toAclDtype(tensor.scalar_type()),
             tensor.strides().data(), 0, ACL_FORMAT_ND, tensor.sizes().data(), tensor.dim(), tensor.data_ptr());
         TORCH_CHECK(descriptor, "aclCreateTensor failed");
         values.push_back(descriptor);

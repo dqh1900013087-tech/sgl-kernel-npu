@@ -97,8 +97,10 @@ def test_existing_registration():
     assert torch_npu.npu_quant_lightning_indexer is _original
     assert importlib.util.find_spec("qli_packed") is None
     assert hasattr(torch.ops.npu, "helloworld")
-    x = torch.ones(1024, dtype=torch.float16, device="npu")
-    torch.testing.assert_close(torch.ops.npu.helloworld(x, x).cpu(), torch.full((1024,), 2., dtype=torch.float16))
+    # The legacy demo divides by 8 blocks * 8 tiles * 2 buffers.
+    # Use 64 half elements per tile so DataCopy satisfies its 32-byte alignment.
+    x = torch.ones(8192, dtype=torch.float16, device="npu")
+    torch.testing.assert_close(torch.ops.npu.helloworld(x, x).cpu(), torch.full((8192,), 2., dtype=torch.float16))
 
 
 def test_vendor_library():
