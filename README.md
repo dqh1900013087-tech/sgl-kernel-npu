@@ -92,7 +92,7 @@ If you need to access Ascend NPU computing resources for development or testing,
 
 Choose the build path:
 
-- **Existing build:** `bash build.sh`, with its existing package selection and SoC arguments. DeepEP and memory saver continue to use this entry. Initialize the submodules below first.
+- **Existing build:** `bash build.sh`, with its existing package selection and SoC arguments. DeepEP and memory saver continue to use this entry. Initialize the submodules below first. Ascend950 builds also support the [bundled Packed QLI operator](csrc/quant_lightning_indexer_packed/README.md), including its AscendC implementation; no separate packed CANN installation is needed.
 - **REFACTOR build:** `python3 setup.py --arch-version 2201` builds only the new `sgl-kernel-npu` wheel, including Python implementations and selected migrated AscendC operators. See the [build guide](python/sgl_kernel_npu/README.md#refactor-builds) for operator selection and CANN `.run` packages. Only `apply_token_bitmask` is migrated so far; `--ops all` selects supported migrated operators, not all legacy native operators.
 
 The [complete new-build option reference](python/sgl_kernel_npu/README.md#command-line-options) lists defaults, valid combinations and examples. Use `python3 setup.py --help` for the new entry or `bash build.sh -h` for the existing build.

@@ -1,8 +1,9 @@
 // Copyright (c) 2026. Licensed under the BSD 3-Clause License.
-// Host-only adapter for the externally installed Packed QLI CANN package.
+// Torch adapter for the Packed QLI implementation bundled in this wheel.
 #include <ATen/ATen.h>
 #include <c10/core/DeviceGuard.h>
-#include <aclnnop/aclnn_quant_lightning_indexer.h>
+#include <aclnn_sgl_quant_lightning_indexer_packed.h>
+#include <limits>
 #include <torch_npu/csrc/core/npu/NPUCachingAllocator.h>
 #include <torch_npu/csrc/core/npu/NPUFormat.h>
 #include <torch_npu/csrc/core/npu/NPUStream.h>
@@ -16,23 +17,25 @@
 
 namespace sglang::npu_kernel {
 namespace {
+void libraryAnchor() {}
 struct PackedApi {
     void* handle;
-    decltype(&aclnnQuantLightningIndexerPackedGetWorkspaceSize) prepare;
-    decltype(&aclnnQuantLightningIndexerPacked) execute;
+    decltype(&aclnnSglQuantLightningIndexerPackedGetWorkspaceSize) prepare;
+    decltype(&aclnnSglQuantLightningIndexerPacked) execute;
     PackedApi() {
-        const char* explicit_library = std::getenv("QLI_PACKED_OPAPI_LIBRARY");
-        const char* home = std::getenv("ASCEND_HOME_PATH");
-        auto path = explicit_library ? std::filesystem::path(explicit_library) :
-            std::filesystem::path(home ? home : "/usr/local/Ascend/cann") /
-                "opp/vendors/qli_packed_transformer/op_api/lib/libcust_opapi.so";
-        TORCH_CHECK(path.is_absolute(), "QLI_PACKED_OPAPI_LIBRARY must be absolute");
+        // Resolve relative to this DSO, so wheels can be relocated and do not
+        // depend on an externally installed qli_packed_transformer vendor.
+        Dl_info self{};
+        TORCH_CHECK(dladdr(reinterpret_cast<void*>(&libraryAnchor), &self) && self.dli_fname,
+                    "Cannot locate sgl-kernel-npu shared library");
+        auto path = std::filesystem::canonical(self.dli_fname).parent_path() /
+            "qli_packed/vendors/sgl_qli_packed/op_api/lib/libcust_opapi.so";
         TORCH_CHECK(std::filesystem::is_regular_file(path), "Packed opapi not found: ", path.string());
         path = std::filesystem::canonical(path);
         handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
         TORCH_CHECK(handle, "Cannot load Packed opapi ", path.string(), ": ", dlerror());
-        prepare = reinterpret_cast<decltype(prepare)>(dlsym(handle, "aclnnQuantLightningIndexerPackedGetWorkspaceSize"));
-        execute = reinterpret_cast<decltype(execute)>(dlsym(handle, "aclnnQuantLightningIndexerPacked"));
+        prepare = reinterpret_cast<decltype(prepare)>(dlsym(handle, "aclnnSglQuantLightningIndexerPackedGetWorkspaceSize"));
+        execute = reinterpret_cast<decltype(execute)>(dlsym(handle, "aclnnSglQuantLightningIndexerPacked"));
         TORCH_CHECK(prepare && execute, "Packed ACLNN symbols missing from ", path.string());
         // Intentionally retain the handle while queued calls may use the functions.
     }
@@ -113,7 +116,11 @@ at::Tensor quant_lightning_indexer_packed(const at::Tensor& query, const at::Ten
     aclOpExecutor* executor = nullptr;
     char layout[] = "TND";
     auto& library = api();
-    auto result = library.prepare(q, cache, w, qs, sq, sk, table, layout, topk, sparse_mode, out, &size, &executor);
+    char key_layout[] = "PA_BSND";
+    auto result = library.prepare(q, cache, w, qs, nullptr, sq, sk, table,
+        0, 0, layout, key_layout, topk, sparse_mode,
+        std::numeric_limits<int64_t>::max(), std::numeric_limits<int64_t>::max(),
+        -1, -1, out, &size, &executor);
     TORCH_CHECK(result == 0, "Packed GetWorkspaceSize failed: ", result, "; ", aclGetRecentErrMsg());
     auto workspace = at::empty({static_cast<int64_t>(size)}, query.options().dtype(at::kByte));
     auto stream = c10_npu::getCurrentNPUStream(query.device().index());

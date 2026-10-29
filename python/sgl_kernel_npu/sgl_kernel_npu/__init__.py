@@ -18,6 +18,17 @@ if (pathlib.Path(__file__).parent / "_cann").is_dir():
         + [path for path in _opp_paths if path and path != str(_cann_vendor)]
     )
 
+# The legacy kernel wheel bundles its private packed QLI implementation here.
+_qli_vendor = pathlib.Path(__file__).resolve().parent / "lib/qli_packed/vendors/sgl_qli_packed"
+if _qli_vendor.is_dir():
+    _qli_api = _qli_vendor / "op_api/lib/libcust_opapi.so"
+    if not _qli_api.is_file():
+        raise RuntimeError(f"Packed QLI wheel is incomplete: {_qli_api}")
+    _opp_paths = os.environ.get("ASCEND_CUSTOM_OPP_PATH", "").split(os.pathsep)
+    os.environ["ASCEND_CUSTOM_OPP_PATH"] = os.pathsep.join(
+        [str(_qli_vendor)] + [p for p in _opp_paths if p and p != str(_qli_vendor)]
+    )
+
 import torch
 import torch_npu
 

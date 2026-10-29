@@ -383,15 +383,28 @@ ascendc_compile_options(sparse_flash_attention_kernel PRIVATE
     "SHELL:-mllvm -cce-aicore-hoist-movemask=false"
 )
 
-# Optional host-only adapter: the device implementation stays in its CANN vendor.
-option(SGL_KERNEL_ENABLE_QLI_PACKED "Enable the Ascend950 Packed QLI ACLNN adapter" OFF)
+# Build and bundle the packed implementation together with its Torch adapter.
+option(SGL_KERNEL_ENABLE_QLI_PACKED "Build the bundled Ascend950 Packed QLI operator" ${SGL_KERNEL_ENABLE_A5_ONLY_OPS})
 if(SGL_KERNEL_ENABLE_QLI_PACKED)
     if(NOT SGL_KERNEL_ENABLE_A5_ONLY_OPS)
         message(FATAL_ERROR "Packed QLI requires Ascend950")
     endif()
-    find_path(QLI_PACKED_INCLUDE_DIR aclnnop/aclnn_quant_lightning_indexer.h
-        PATHS "${ASCEND_HOME_PATH}/opp/vendors/qli_packed_transformer/op_api/include"
-        NO_DEFAULT_PATH REQUIRED)
+    include(ExternalProject)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    set(QLI_PACKED_BINARY_DIR "${CMAKE_BINARY_DIR}/qli-packed")
+    set(QLI_PACKED_INCLUDE_DIR "${QLI_PACKED_BINARY_DIR}/autogen")
+    ExternalProject_Add(sgl_qli_packed_bundle
+        SOURCE_DIR "${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed/cann"
+        BINARY_DIR "${QLI_PACKED_BINARY_DIR}"
+        CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+        DOWNLOAD_COMMAND "" UPDATE_COMMAND "" BUILD_ALWAYS TRUE
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --parallel 8
+        COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target binary --parallel 8
+        COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target package --parallel 8
+        INSTALL_COMMAND ${Python3_EXECUTABLE}
+            "${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed/cann/stage.py"
+            <BINARY_DIR> "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/qli_packed"
+        BUILD_BYPRODUCTS "${QLI_PACKED_INCLUDE_DIR}/aclnn_sgl_quant_lightning_indexer_packed.h")
     find_library(QLI_NNOPBASE_LIBRARY nnopbase PATHS "${ASCEND_HOME_PATH}/lib64" NO_DEFAULT_PATH REQUIRED)
     list(APPEND OP_SRCS ${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed/op_host/quant_lightning_indexer_packed.cpp)
     add_compile_definitions(SGL_KERNEL_ENABLE_QLI_PACKED)
@@ -400,6 +413,7 @@ endif()
 # create shared library
 add_library(${OP_PLUGIN_NAME} SHARED ${OP_SRCS})
 if(SGL_KERNEL_ENABLE_QLI_PACKED)
+    add_dependencies(${OP_PLUGIN_NAME} sgl_qli_packed_bundle)
     target_include_directories(${OP_PLUGIN_NAME} BEFORE PRIVATE ${QLI_PACKED_INCLUDE_DIR})
     target_link_libraries(${OP_PLUGIN_NAME} PRIVATE ${QLI_NNOPBASE_LIBRARY})
 endif()

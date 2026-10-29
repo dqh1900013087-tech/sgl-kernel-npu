@@ -3,6 +3,7 @@
 **/__pycache__/
 **/build_out/
 output/
+python/sgl_kernel_npu/sgl_kernel_npu/lib/qli_packed/
 **/fusion_result.json
 **/*.egg-info/
 **/kernel_meta/

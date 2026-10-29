@@ -1,0 +1,41 @@
+{
+  "source_repository": "https://gitcode.com/cann/ops-transformer",
+  "source_commit": "aacba10c247cc454768c07704c7d0d026adc3d6d",
+  "adaptations": [
+    "Rename the internal CANN operator and kernel entry to SglQuantLightningIndexerPacked / sgl_quant_lightning_indexer_packed.",
+    "Build only the Ascend950 FP8-query, UINT8 packed-cache, BF16-weight variant.",
+    "Bundle the generated vendor in the Python wheel; keep the Python interface unchanged."
+  ],
+  "files": {
+    "attention/lightning_indexer/op_kernel/arch35/common/lightning_indexer_kernel_base_arch35.h": "1c07806d4a45a9e1680a558c2c44ef4bd92831a4a8007a331a8cf9435f124ec5",
+    "attention/lightning_indexer/op_kernel/arch35/vf/common/vf_topk_16_gather.h": "98149c1b97894bfe9c03349fc06253e0c1df0579415c2d8e8201db07cc3b403f",
+    "attention/lightning_indexer/op_kernel/arch35/vf/vf_topk_gather.h": "29f5ce51cf5d539955523adf6cffaaafa7fc4fa9d25f3d85d91f260bef56eb99",
+    "attention/lightning_indexer/op_kernel/lightning_indexer_common.h": "48de492d0e3ef03ef5e91a722da5664fd7e67760320e7581dcecf9ff4f656d4c",
+    "attention/lightning_indexer_v2/op_kernel/arch35/common/lightning_indexer_v2_base_arch35.h": "7512ee420cd90174f73443d3b9805289c997afd62fb9568e6ed9740c063216c0",
+    "attention/lightning_indexer_v2/op_kernel/arch35/common/lightning_indexer_v2_kernel_base_arch35.h": "556f61c82ad072b111b9d6caf636c1f3ed56afa133af73561b2bbc72ead75bc4",
+    "attention/lightning_indexer_v2/op_kernel/arch35/common/vf/lightning_indexer_v2_topk_base.h": "bb216ee7c8f3a152becb18f345f394b05a84d944bf59cd9606841c4bfc10b72c",
+    "attention/lightning_indexer_v2/op_kernel/arch35/common/vf/lightning_indexer_v2_vector1_base.h": "9274ff7a55344bb01dbb2d9011312cad296990982506bb6f7b9482c328f4bfd4",
+    "attention/quant_lightning_indexer/op_host/quant_lightning_indexer_infershape.cpp": "a60c3417cf0dae463780a7619df1ea1c1c755e2750de6f3adaa67ac122b23d9a",
+    "attention/quant_lightning_indexer/op_host/quant_lightning_indexer_tiling.cpp": "314c97ed77a114c6064122df0d52139cf84a25dd93b7eecfb42766175495f2b4",
+    "attention/quant_lightning_indexer/op_host/quant_lightning_indexer_tiling.h": "53a0df657d35a097d397289fb4531199a02db732785657b768a337beb52963b2",
+    "attention/quant_lightning_indexer/op_kernel/arch22/quant_lightning_indexer_kernel_arch22.h": "3a87b22f93de7615e609600e51e89f5bf02fd600278731aa5da1b6922fe156d7",
+    "attention/quant_lightning_indexer/op_kernel/arch22/quant_lightning_indexer_service_cube_arch22.h": "a8766ecb9a925425483cbc01fce1ba04fae64bb49346838626461069b209f1a2",
+    "attention/quant_lightning_indexer/op_kernel/arch22/quant_lightning_indexer_service_vector_arch22.h": "c54265977f5ff0487eec7f7525de03776f5ea7038039e30735604d7d3cfe82ad",
+    "attention/quant_lightning_indexer/op_kernel/arch22/quant_lightning_indexer_vector.h": "9b094a4d755dfe5568b06ea1f3cc584fe35599bd46c88141fff85a1cad7a796a",
+    "attention/quant_lightning_indexer/op_kernel/arch35/quant_lightning_indexer_kernel_arch35.h": "fa3cffb1fbf6c45f1f6a4af05237ea57f620f11d4f0d6492792ad29364f27449",
+    "attention/quant_lightning_indexer/op_kernel/arch35/quant_lightning_indexer_service_cube_arch35.h": "73d24efaf6c8a50c23c1d3a8f0725b8c79c353e72fd5adf7a90ba665cb25b17a",
+    "attention/quant_lightning_indexer/op_kernel/arch35/quant_lightning_indexer_service_vector_arch35.h": "10eb367380e264d560ef2565dd17458ae91edff3d9d8e1919d25f30c3301c780",
+    "attention/quant_lightning_indexer/op_kernel/arch35/vf/quant_lightning_indexer_topk.h": "11f6f7a989571a3f73c659e2f88266adaa2045cbbd21ebb05e09ea3be247288a",
+    "attention/quant_lightning_indexer/op_kernel/arch35/vf/quant_lightning_indexer_vector1.h": "3dbe7b80329eac632094d8ab7211005e25225650651cb1956d4f861294465746",
+    "attention/quant_lightning_indexer/op_kernel/quant_lightning_indexer.cpp": "c9b677f718ecfc592ed33de67cbab6d1cb8493540e9ac2a6c3bde4e5296ef7c2",
+    "attention/quant_lightning_indexer/op_kernel/quant_lightning_indexer_common.h": "0ed6ee943f8743354fe763d8c93f2cf09bf474b9a9dacf0220c64975d6dc2ac7",
+    "attention/quant_lightning_indexer/op_kernel/quant_lightning_indexer_packed_layout.h": "caa6e0aa194230879cfd4bdea463175133543c6ea830450b48c792607f33f029",
+    "attention/quant_lightning_indexer/op_kernel/quant_lightning_indexer_template_tiling_key.h": "8a075c2b323eec2029b6f4e3eea24512cd5e74bf3ff0076c20bb39292817bd63",
+    "common/include/err/ops_err.h": "851d0356c2bff453074d78ce5aa79a6daaa00665e394dc405ef97200060314d9",
+    "common/include/op_host/tiling_util.h": "2bb4a85bc03b936af701ea0f9ff46e8c242ffa317dee198d31c6110434b92526",
+    "third_party/opbase/include/op_common/log/log.h": "a9bb6d01553e15041bc5ec2807b233d23ca37191fe9bde9bbff9cdc730c6788c",
+    "third_party/opbase/include/op_common/op_host/util/op_const_def.h": "67fc9bebbefa9dc8f22f080aaae1e910bce655d412580719a13dc3d80e00a84d",
+    "third_party/opbase/include/op_common/op_host/util/opbase_export.h": "b47c8d3b46ca6062a0934036af17559f3e2b81c3e5373000b6ba8ff6fefd6b83",
+    "third_party/opbase/src/op_common/log/log.cpp": "d4132afecec211d77719837b4e7b1e165d789c295f28981c90d0ef33af6b7eec"
+  }
+}

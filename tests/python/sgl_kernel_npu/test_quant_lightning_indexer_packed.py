@@ -107,4 +107,6 @@ def test_vendor_library():
     from pathlib import Path
     args, k, scale = inputs(kv=256, topk=256)
     compare(args, k, scale, 256)
-    assert 'qli_packed_transformer/op_api/lib/libcust_opapi.so' in Path('/proc/self/maps').read_text()
+    maps = Path('/proc/self/maps').read_text()
+    assert 'lib/qli_packed/vendors/sgl_qli_packed/op_api/lib/libcust_opapi.so' in maps
+    assert 'qli_packed_transformer/op_api/lib/libcust_opapi.so' not in maps
