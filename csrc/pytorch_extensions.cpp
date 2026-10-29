@@ -24,6 +24,12 @@ TORCH_LIBRARY_FRAGMENT(npu, m)
     m.def("sgl_kernel_npu_print_version() -> ()", []() { printf("%s\n", LIB_VERSION_FULL); });
     m.def("sgl_kernel_npu_version() -> str", []() { return std::string("") + LIB_VERSION; });
 
+#ifdef SGL_KERNEL_ENABLE_QLI_PACKED
+    m.def("sgl_quant_lightning_indexer_packed(Tensor query, Tensor packed_cache, Tensor weights, "
+          "Tensor query_scale, Tensor seq_q, Tensor seq_k, Tensor block_table, "
+          "int topk=2048, int sparse_mode=3) -> Tensor");
+#endif
+
     m.def("helloworld(Tensor x, Tensor y) -> Tensor");
 
     m.def(
@@ -299,6 +305,10 @@ TORCH_LIBRARY_IMPL(npu, CatchAll, m)
 
 TORCH_LIBRARY_IMPL(npu, PrivateUse1, m)
 {
+#ifdef SGL_KERNEL_ENABLE_QLI_PACKED
+    m.impl("sgl_quant_lightning_indexer_packed", TORCH_FN(sglang::npu_kernel::quant_lightning_indexer_packed));
+#endif
+
     m.impl("helloworld", TORCH_FN(sglang::npu_kernel::helloworld));
 
     m.impl("cache_loc_assign", TORCH_FN(sglang::npu_kernel::cache_loc_assign));

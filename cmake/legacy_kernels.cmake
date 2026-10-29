@@ -383,8 +383,27 @@ ascendc_compile_options(sparse_flash_attention_kernel PRIVATE
     "SHELL:-mllvm -cce-aicore-hoist-movemask=false"
 )
 
+# Optional host-only adapter: the device implementation stays in its CANN vendor.
+option(SGL_KERNEL_ENABLE_QLI_PACKED "Enable the Ascend950 Packed QLI ACLNN adapter" OFF)
+if(SGL_KERNEL_ENABLE_QLI_PACKED)
+    if(NOT SGL_KERNEL_ENABLE_A5_ONLY_OPS)
+        message(FATAL_ERROR "Packed QLI requires Ascend950")
+    endif()
+    find_path(QLI_PACKED_INCLUDE_DIR aclnnop/aclnn_quant_lightning_indexer.h
+        PATHS "${ASCEND_HOME_PATH}/opp/vendors/qli_packed_transformer/op_api/include"
+        NO_DEFAULT_PATH REQUIRED)
+    find_library(QLI_NNOPBASE_LIBRARY nnopbase PATHS "${ASCEND_HOME_PATH}/lib64" NO_DEFAULT_PATH REQUIRED)
+    list(APPEND OP_SRCS ${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed/op_host/quant_lightning_indexer_packed.cpp)
+    add_compile_definitions(SGL_KERNEL_ENABLE_QLI_PACKED)
+endif()
+
 # create shared library
 add_library(${OP_PLUGIN_NAME} SHARED ${OP_SRCS})
+if(SGL_KERNEL_ENABLE_QLI_PACKED)
+    target_include_directories(${OP_PLUGIN_NAME} BEFORE PRIVATE ${QLI_PACKED_INCLUDE_DIR})
+    target_link_libraries(${OP_PLUGIN_NAME} PRIVATE ${QLI_NNOPBASE_LIBRARY})
+endif()
+
 
 target_link_libraries(${OP_PLUGIN_NAME} PRIVATE
         ${A3_ONLY_KERNEL_TARGETS}

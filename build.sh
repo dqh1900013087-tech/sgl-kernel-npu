@@ -492,6 +492,10 @@ function build_cmake_modules()
         "-DBUILD_CATLASS_MODULE=${BUILD_CATLASS_MODULE:-OFF}"
     )
 
+    if [[ "${SGL_KERNEL_ENABLE_QLI_PACKED:-OFF}" == "ON" ]]; then
+        cmake_args+=("-DSGL_KERNEL_ENABLE_QLI_PACKED=ON")
+    fi
+
     if [[ -n "$ASC_CMAKE_DIR" ]]; then
         cmake_args+=(
             "-DCMAKE_PREFIX_PATH=$ASC_CMAKE_DIR"

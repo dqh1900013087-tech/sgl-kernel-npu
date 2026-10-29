@@ -29,3 +29,6 @@ def _load_sgl_kernel_npu():
 
 
 _load_sgl_kernel_npu()
+
+# Schema is registered by the shared library before FakeTensor registration.
+from .indexer.quant_lightning_indexer_packed import quant_lightning_indexer_packed
