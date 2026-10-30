@@ -394,7 +394,7 @@ if(SGL_KERNEL_ENABLE_QLI_PACKED)
     set(QLI_PACKED_BINARY_DIR "${CMAKE_BINARY_DIR}/qli-packed")
     set(QLI_PACKED_INCLUDE_DIR "${QLI_PACKED_BINARY_DIR}/autogen")
     ExternalProject_Add(sgl_qli_packed_bundle
-        SOURCE_DIR "${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed/cann"
+        SOURCE_DIR "${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed"
         BINARY_DIR "${QLI_PACKED_BINARY_DIR}"
         CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
         DOWNLOAD_COMMAND "" UPDATE_COMMAND "" BUILD_ALWAYS TRUE
@@ -402,7 +402,7 @@ if(SGL_KERNEL_ENABLE_QLI_PACKED)
         COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target binary --parallel 8
         COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target package --parallel 8
         INSTALL_COMMAND ${Python3_EXECUTABLE}
-            "${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed/cann/stage.py"
+            "${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed/stage.py"
             <BINARY_DIR> "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/qli_packed"
         BUILD_BYPRODUCTS "${QLI_PACKED_INCLUDE_DIR}/aclnn_sgl_quant_lightning_indexer_packed.h")
     find_library(QLI_NNOPBASE_LIBRARY nnopbase PATHS "${ASCEND_HOME_PATH}/lib64" NO_DEFAULT_PATH REQUIRED)

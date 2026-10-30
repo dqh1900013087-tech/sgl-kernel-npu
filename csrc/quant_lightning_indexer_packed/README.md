@@ -39,16 +39,13 @@ can be installed at a different path from its build directory.
 ## Implementation
 
 ```text
-op_host/quant_lightning_indexer_packed.cpp  Torch binding and validation
-cann/packed_def.cpp                      private CANN operator declaration
-cann/src/attention/quant_lightning_indexer/
-  op_host/                              shape inference and tiling
-  op_kernel/                            packed AscendC implementation
-cann/src/attention/lightning_indexer*/   required shared headers
-cann/src/common/                        required host helpers
-cann/src/third_party/opbase/             required logging and constants
-cann/CMakeLists.txt                     generated API, host and kernel build
-cann/stage.py                           stage generated vendor into the wheel
+op_host/                                Torch adapter, declaration, tiling and shape inference
+op_host/quant_lightning_indexer_host_utils.h  Small shape diagnostic helper; SDK logging
+op_kernel/                              Packed QLI entry and shared QLI types
+op_kernel/arch35/                       Ascend950 implementation only
+op_kernel/common/                       Required arch35 LightningIndexer/V2 helpers
+CMakeLists.txt                          Generated API, host and kernel build
+stage.py                                Stage the generated vendor into the wheel
 ```
 
 The internal operator name is `SglQuantLightningIndexerPacked`, distinct from
@@ -62,8 +59,11 @@ sgl_kernel_npu/lib/qli_packed/vendors/sgl_qli_packed/
 
 The implementation comes from the validated `ops-transformer` packed source at
 commit `aacba10c247cc454768c07704c7d0d026adc3d6d`. See
-`cann/source-manifest.json` for the imported files and adapted-source hashes.
-Original CANN copyright notices and both upstream license files are retained.
+`source-manifest.json` for the imported files and adapted-source hashes.
+Original CANN copyright notices and the upstream license are retained.
+The unused arch22 kernels and the copied opbase logging source tree were removed;
+host logging uses the base CANN SDK headers. The existing repository LightningIndexer
+is the A2/A3 implementation and does not supply these arch35 helper headers.
 No build-time download or external ops-transformer source directory is needed.
 
 ## Interface and validation
@@ -71,13 +71,22 @@ No build-time download or external ops-transformer source directory is needed.
 ```python
 import torch
 import torch_npu
-import sgl_kernel_npu
+from sgl_kernel_npu.operators.indexer import quant_lightning_indexer_packed
 
-indices = sgl_kernel_npu.quant_lightning_indexer_packed(
+indices = quant_lightning_indexer_packed(
     query, packed_cache, weights, query_scale,
     seq_q, seq_k, block_table, topk, sparse_mode,
+    impl="auto",
 )
 ```
+
+The public operator uses the unified registry and declares arch35 support.
+`impl="auto"` and `impl="ascendc"` select the same bundled backend; no
+`torch_native` implementation is registered. The existing
+`sgl_kernel_npu.quant_lightning_indexer_packed(...)` entry remains compatible
+and forwards to this public API, including the optional `impl` keyword.
+Public dispatch tests are in
+`tests/python/operators/indexer/test_quant_lightning_indexer_packed_api.py`.
 
 The cache is UINT8 `[pages, P * 132]`. Each page consists of all `P * 128`
 FP8 key bytes followed by all `P` FP32 scales. The format is not an array of
@@ -93,3 +102,21 @@ hidden. The operator's 19 tests and the modified SGLang's 8 standalone DSA
 integration tests passed. The latter use small tensors, not a model server.
 Late import after NPU initialization also passed. Full-model performance and
 distributed SGLang execution are not covered by these checks.
+
+
+## Task queue lifetime
+
+The ACLNN callback must not capture `at::Tensor` objects. A model graph warmup
+was observed releasing those captures while holding the torch_npu task-queue
+mutex; Tensor destruction recorded an NPU event and tried to acquire the same
+mutex again. The adapter now uses torch_npu's exported `GetWorkSpaceAddr`,
+`InitExecSubTheadCtx`, and `OpCommand::RunOpApiV2` interfaces. Input/output
+stream usage is recorded outside the callback; only ACL descriptors, raw
+workspace address, executor and stream are captured.
+
+Validation on the current torch_npu 2.10.post6 / Ascend950 environment: 38
+standalone tests passed, including cross-stream temporary inputs and repeated
+NPU graph replay with changed input data. These small tests also passed with
+the old binary and do not reproduce the full-model deadlock. Full SGLang startup
+has intentionally not been rerun after this change. Other torch_npu releases
+must provide the same exported ACLNN helper interfaces.

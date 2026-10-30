@@ -1,0 +1,35 @@
+{
+  "source_repository": "https://gitcode.com/cann/ops-transformer",
+  "source_commit": "aacba10c247cc454768c07704c7d0d026adc3d6d",
+  "adaptations": [
+    "Rename the internal CANN operator and kernel entry to SglQuantLightningIndexerPacked / sgl_quant_lightning_indexer_packed.",
+    "Build only the Ascend950 FP8-query, UINT8 packed-cache, BF16-weight variant.",
+    "Bundle the generated vendor in the Python wheel; keep the Python interface unchanged.",
+    "Flatten into op_host/op_kernel, remove unused arch22 kernels, reuse SDK logging instead of vendored opbase."
+  ],
+  "files": {
+    "op_host/quant_lightning_indexer_def.cpp": "fb1cc4901027e55658ed9edf05d21abf4f37e5feb237bf00c65803cb4a183539",
+    "op_host/quant_lightning_indexer_host_utils.h": "201d0ab2d7d4e6527ecb72ac02b3c5c9932b0ffc267cadcaa74a35e9102183df",
+    "op_host/quant_lightning_indexer_infershape.cpp": "88b0ef91a2d27b8872bea190cfbcf55246f9730b585a2f871ee055d7a1666439",
+    "op_host/quant_lightning_indexer_packed.cpp": "069052b8dbd64cd52df2d8bd9e261368477ba2e35ae4b3b6a3755447eefaff60",
+    "op_host/quant_lightning_indexer_tiling.cpp": "3bc4d25cf0cf062a5f94e725fe98d8cd742d5dfd8f0789c92cbdc9d4828a3e6f",
+    "op_host/quant_lightning_indexer_tiling.h": "7cc1e3b1196beffd6dd42b7ccf6a5de4df631af2e8495cac1660d0d6ae76264e",
+    "op_kernel/arch35/quant_lightning_indexer_kernel_arch35.h": "c818fa3e4df503043620446531898bd290ef64add1c3fbf6fafc9adcb25f9723",
+    "op_kernel/arch35/quant_lightning_indexer_service_cube_arch35.h": "73d24efaf6c8a50c23c1d3a8f0725b8c79c353e72fd5adf7a90ba665cb25b17a",
+    "op_kernel/arch35/quant_lightning_indexer_service_vector_arch35.h": "388b327948ed5f002090b38eb164f07dc50e773653f062e31a797a62937360fc",
+    "op_kernel/arch35/vf/quant_lightning_indexer_topk.h": "29ef7746b5d7945cf7af6103317467ff26a3c8ffb87b237f04e9bd902bb448b7",
+    "op_kernel/arch35/vf/quant_lightning_indexer_vector1.h": "5ff577d74cbe118b9843546ced2885cfd15b4e01bb87c001bb38e0b541a4ccf4",
+    "op_kernel/common/lightning_indexer_common.h": "48de492d0e3ef03ef5e91a722da5664fd7e67760320e7581dcecf9ff4f656d4c",
+    "op_kernel/common/lightning_indexer_kernel_base_arch35.h": "52e8ee6139041770811fe8f3618c1a1fc86acc4b32e33d693794c2a9b9e6eb2d",
+    "op_kernel/common/lightning_indexer_v2_base_arch35.h": "7512ee420cd90174f73443d3b9805289c997afd62fb9568e6ed9740c063216c0",
+    "op_kernel/common/lightning_indexer_v2_kernel_base_arch35.h": "556f61c82ad072b111b9d6caf636c1f3ed56afa133af73561b2bbc72ead75bc4",
+    "op_kernel/common/lightning_indexer_v2_topk_base.h": "e3b1f9116ee62f6dd908adf386115b1da17697693ee98aff803ec32f6e1e0cd5",
+    "op_kernel/common/lightning_indexer_v2_vector1_base.h": "9274ff7a55344bb01dbb2d9011312cad296990982506bb6f7b9482c328f4bfd4",
+    "op_kernel/common/vf_topk_16_gather.h": "98149c1b97894bfe9c03349fc06253e0c1df0579415c2d8e8201db07cc3b403f",
+    "op_kernel/common/vf_topk_gather.h": "29f5ce51cf5d539955523adf6cffaaafa7fc4fa9d25f3d85d91f260bef56eb99",
+    "op_kernel/quant_lightning_indexer.cpp": "dc3b1ed317a6a66289e422300256eab2eab491fab58065a8fe1dc4a663e72997",
+    "op_kernel/quant_lightning_indexer_common.h": "0ed6ee943f8743354fe763d8c93f2cf09bf474b9a9dacf0220c64975d6dc2ac7",
+    "op_kernel/quant_lightning_indexer_packed_layout.h": "caa6e0aa194230879cfd4bdea463175133543c6ea830450b48c792607f33f029",
+    "op_kernel/quant_lightning_indexer_template_tiling_key.h": "8a075c2b323eec2029b6f4e3eea24512cd5e74bf3ff0076c20bb39292817bd63"
+  }
+}

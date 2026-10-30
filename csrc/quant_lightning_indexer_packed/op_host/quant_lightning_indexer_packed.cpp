@@ -15,6 +15,11 @@
 #include <memory>
 #include <vector>
 
+// Exported by torch_npu; declaration matches op_plugin/utils/op_api_common_base.h.
+// Avoid importing that header's unrelated operator/plugin build dependencies.
+TORCH_NPU_API void* GetWorkSpaceAddr(uint64_t workspace_size);
+TORCH_NPU_API void InitExecSubTheadCtx(aclrtStream acl_stream);
+
 namespace sglang::npu_kernel {
 namespace {
 void libraryAnchor() {}
@@ -122,22 +127,26 @@ at::Tensor quant_lightning_indexer_packed(const at::Tensor& query, const at::Ten
         std::numeric_limits<int64_t>::max(), std::numeric_limits<int64_t>::max(),
         -1, -1, out, &size, &executor);
     TORCH_CHECK(result == 0, "Packed GetWorkspaceSize failed: ", result, "; ", aclGetRecentErrMsg());
-    auto workspace = at::empty({static_cast<int64_t>(size)}, query.options().dtype(at::kByte));
     auto stream = c10_npu::getCurrentNPUStream(query.device().index());
+    auto acl_stream = stream.stream(false);
+    // Use the exported native ACLNN workspace allocator, including its
+    // stream/graph lifetime handling. The callback must not own Tensors:
+    // destroying them under the task-queue lock can re-enter that same lock
+    // through allocator event recording and deadlock.
+    void* workspace_addr = GetWorkSpaceAddr(size);
     keep_alive.push_back(output);
-    keep_alive.push_back(workspace);
     for (const auto& tensor : keep_alive) {
         if (tensor.numel()) c10_npu::NPUCachingAllocator::recordStream(tensor.storage().data_ptr(), stream);
     }
     auto execute = library.execute;
-    at_npu::native::OpCommand command;
-    command.Name("SglQuantLightningIndexerPacked").SetCustomHandler(
-        [descriptors, keep_alive, workspace, size, executor, execute, stream]() -> int {
-            auto status = execute(size ? workspace.data_ptr() : nullptr, size, executor, stream.stream(false));
-            TORCH_CHECK(status == 0, "Packed execute failed: ", status, "; ", aclGetRecentErrMsg());
-            return 0;
-        });
-    command.Run();
+    // Descriptors contain ACL metadata only, never owning at::Tensor objects.
+    auto launch = [descriptors, workspace_addr, size, executor, execute, acl_stream]() -> int {
+        InitExecSubTheadCtx(acl_stream);
+        auto status = execute(workspace_addr, size, executor, acl_stream);
+        TORCH_CHECK(status == 0, "Packed execute failed: ", status, "; ", aclGetRecentErrMsg());
+        return 0;
+    };
+    at_npu::native::OpCommand::RunOpApiV2("SglQuantLightningIndexerPacked", launch);
     return output;
 }
 } // namespace sglang::npu_kernel

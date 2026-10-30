@@ -1,4 +1,4 @@
-"""GLM DSA adapter for the externally installed Ascend 950 Packed QLI package."""
+"""Compatibility entry and FakeTensor registration for the bundled Packed QLI."""
 import torch
 
 _available = hasattr(torch.ops.npu, "sgl_quant_lightning_indexer_packed")
@@ -14,8 +14,16 @@ if _available:
 
 
 def quant_lightning_indexer_packed(query, packed_cache, weights, query_scale,
-                                  seq_q, seq_k, block_table, topk=2048, sparse_mode=3):
-    if not _available:
-        raise RuntimeError("Build sgl-kernel-npu for Ascend950 with SGL_KERNEL_ENABLE_QLI_PACKED=ON")
-    return torch.ops.npu.sgl_quant_lightning_indexer_packed(
-        query, packed_cache, weights, query_scale, seq_q, seq_k, block_table, topk, sparse_mode)
+                                  seq_q, seq_k, block_table, topk=2048, sparse_mode=3,
+                                  *, impl="auto"):
+    """Compatibility alias; prefer ``sgl_kernel_npu.operators.indexer``.
+
+    ``auto`` selects the bundled AscendC implementation on arch35.
+    """
+    # Keep registry hardware discovery lazy for unrelated package users.
+    from ..operators.indexer import quant_lightning_indexer_packed as public_op
+
+    return public_op(
+        query, packed_cache, weights, query_scale, seq_q, seq_k, block_table,
+        topk, sparse_mode, impl=impl,
+    )
