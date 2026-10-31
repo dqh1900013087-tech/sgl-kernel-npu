@@ -4,8 +4,7 @@
 
 The repository-root `setup.py` builds the new `sgl-kernel-npu` package. It includes
 all Python interfaces and implementation sources, including Triton and Torch
-native, plus the migrated AscendC operators selected for this build. Only
-`apply_token_bitmask` has been migrated so far; `--ops all` does not include
+native, plus the migrated AscendC operators selected for this build. `apply_token_bitmask` and Ascend950 `quant_lightning_indexer_packed` have been migrated; `--ops all` does not include
 unmigrated legacy native operators.
 
 The existing `build.sh` and nested Python `setup.py` keep their original build

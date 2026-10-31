@@ -233,6 +233,10 @@ TORCH_LIBRARY_FRAGMENT(npu, m)
 #endif
 
 #ifdef SGL_KERNEL_ENABLE_A5_ONLY_OPS
+    m.def("sgl_quant_lightning_indexer_packed(Tensor query, Tensor packed_cache, Tensor weights, "
+          "Tensor query_scale, Tensor seq_q, Tensor seq_k, Tensor block_table, "
+          "int topk=2048, int sparse_mode=3) -> Tensor");
+
     m.def(
         "kv_quant_sparse_attn_sharedkv(Tensor q, *, Tensor? ori_kv=None, Tensor? cmp_kv=None, "
         "Tensor? ori_sparse_indices=None, Tensor? cmp_sparse_indices=None, "
@@ -414,6 +418,7 @@ TORCH_LIBRARY_IMPL(npu, PrivateUse1, m)
 #endif
 
 #ifdef SGL_KERNEL_ENABLE_A5_ONLY_OPS
+    m.impl("sgl_quant_lightning_indexer_packed", TORCH_FN(sglang::npu_kernel::quant_lightning_indexer_packed));
     m.impl("kv_quant_sparse_attn_sharedkv", TORCH_FN(sglang::npu_kernel::kv_quant_sparse_attn_sharedkv));
     m.impl("kv_compress_epilog", TORCH_FN(sglang::npu_kernel::kv_compress_epilog));
     m.impl("situ_mxfp8_quant", TORCH_FN(sglang::npu_kernel::situ_mxfp8_quant));
