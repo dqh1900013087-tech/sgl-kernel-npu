@@ -63,6 +63,25 @@ def _ascendc_impl(
     )
 
 
+_torch_native_fn = None
+
+
+@register_impl(
+    "indexer.quant_lightning_indexer_packed",
+    "torch_native",
+    supported_generations={Generation.ARCH35},
+)
+def _torch_native_impl(*args):
+    global _torch_native_fn
+    if _torch_native_fn is None:
+        from ...implementation.torch_native.indexer.quant_lightning_indexer_packed import (
+            quant_lightning_indexer_packed,
+        )
+
+        _torch_native_fn = quant_lightning_indexer_packed
+    return _torch_native_fn(*args)
+
+
 @register_operator("indexer.quant_lightning_indexer_packed")
 def quant_lightning_indexer_packed(
     query,
@@ -93,7 +112,7 @@ def quant_lightning_indexer_packed(
         block_table (torch.Tensor): INT32 physical page IDs [B, max_pages].
         topk (int): Number of indices per query, in [1, 2048]; default 2048.
         sparse_mode (int): 0 for unmasked or 3 for causal indexing; default 3.
-        impl (str): "auto" or "ascendc"; both select the same native backend.
+        impl (str): "auto", "ascendc", or "torch_native"; auto selects ascendc.
 
     Returns:
         torch.Tensor: INT32 indices [T, 1, topk] on the query device.

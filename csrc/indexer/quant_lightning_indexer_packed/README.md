@@ -63,10 +63,10 @@ python3 -m pytest tests/python/operators/indexer -v --tb=short
 
 Tests compare exact indices against the separate-cache CANN QLI implementation,
 including mask modes, heads, page sizes, invalid metadata, FakeTensor,
-cross-stream temporary inputs and graph replay with updated inputs. This is a
-trusted external regression reference, not an independent torch_native math
-implementation. The two kernels share upstream algorithm lineage, so matching
-results alone cannot exclude shared mathematical defects. Full-model startup,
+cross-stream temporary inputs and graph replay with updated inputs. An independent
+`torch_native` implementation additionally checks selected Top-k sets using
+PyTorch FP32 scoring and BF16 ranking, including ties and short sequences.
+The separate-cache CANN reference shares upstream algorithm lineage. Full-model startup,
 distributed execution and end-to-end performance are not covered.
 
 ## Source

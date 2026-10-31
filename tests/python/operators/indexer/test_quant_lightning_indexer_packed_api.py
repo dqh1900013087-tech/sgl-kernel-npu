@@ -1,7 +1,6 @@
 """Public API dispatch and compatibility tests for the native packed indexer.
 
-The separate-cache CANN operator is the regression baseline here. This does
-not introduce a torch_native implementation or claim independent math coverage.
+The separate-cache CANN operator is an additional regression baseline.
 """
 
 import pytest
@@ -49,7 +48,7 @@ def generate_data(query_tokens):
     return args, key, ks
 
 
-@pytest.mark.parametrize("impl", ["auto", "ascendc"])
+@pytest.mark.parametrize("impl", ["auto", "ascendc", "torch_native"])
 @pytest.mark.parametrize("query_tokens", [1, 4], ids=["decode", "prefill"])
 def test_public_api(impl, query_tokens):
 
@@ -74,6 +73,8 @@ def test_public_api(impl, query_tokens):
     )
     if isinstance(expected, (tuple, list)):
         expected = expected[0]
+    if impl == "torch_native":
+        actual, expected = actual.sort(dim=-1).values, expected.sort(dim=-1).values
     torch.testing.assert_close(actual.cpu(), expected.cpu(), rtol=0, atol=0)
 
 
@@ -82,13 +83,17 @@ def test_registry():
         get_op_name(quant_lightning_indexer_packed)
         == "indexer.quant_lightning_indexer_packed"
     )
-    assert list_impls(quant_lightning_indexer_packed) == ["ascendc", "auto"]
+    assert list_impls(quant_lightning_indexer_packed) == [
+        "ascendc",
+        "auto",
+        "torch_native",
+    ]
     assert get_impl(quant_lightning_indexer_packed, "auto") is get_impl(
         quant_lightning_indexer_packed, "ascendc"
     )
 
 
-@pytest.mark.parametrize("impl", ["torch_native", "unknown"])
+@pytest.mark.parametrize("impl", ["unknown"])
 def test_unavailable_implementation(impl):
     # Dispatch must fail before trying to inspect tensors or launch a kernel.
     with pytest.raises(ImplementationNotFoundError):
@@ -182,3 +187,97 @@ def test_cross_stream_callback_release():
         producer.wait_stream(consumer)
     torch.npu.synchronize()
     torch.testing.assert_close(actual.cpu(), expected.cpu(), rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("sparse_mode", [0, 3])
+@pytest.mark.parametrize(
+    "heads,page", [(8, 16), (16, 128), (24, 16), (32, 128), (64, 1024)]
+)
+def test_torch_native_reference(heads, page, sparse_mode):
+    from test_quant_lightning_indexer_packed import generate_data as generate_paged
+
+    args, _, _ = generate_paged(
+        batch=2, qlen=3, kv=511, heads=heads, page=page, topk=128
+    )
+    expected = quant_lightning_indexer_packed(
+        *args, 128, sparse_mode, impl="torch_native"
+    )
+    actual = quant_lightning_indexer_packed(*args, 128, sparse_mode, impl="ascendc")
+    torch.testing.assert_close(
+        actual.cpu().sort(dim=-1).values,
+        expected.cpu().sort(dim=-1).values,
+        rtol=0,
+        atol=0,
+    )
+
+
+@pytest.mark.parametrize("sparse_mode", [0, 3])
+def test_torch_native_ties_padding_and_empty(sparse_mode):
+    args, _, _ = generate_data(4)
+    args[2].zero_()
+    args[5].fill_(2)
+    for impl in ("ascendc", "torch_native"):
+        actual = quant_lightning_indexer_packed(*args, 8, sparse_mode, impl=impl).cpu()
+        expected = torch.full((4, 1, 8), -1, dtype=torch.int32, device="cpu")
+        for row in range(4):
+            count = 2 if sparse_mode == 0 else max(0, row - 1)
+            expected[row, 0, :count] = torch.arange(
+                count, dtype=torch.int32, device="cpu"
+            )
+        torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+    args = list(args)
+    for index in (0, 2, 3):
+        args[index] = args[index][:0]
+    assert quant_lightning_indexer_packed(*args, impl="torch_native").shape == (
+        0,
+        1,
+        2048,
+    )
+
+
+def test_torch_native_does_not_call_custom_kernel(monkeypatch):
+    args, _, _ = generate_data(1)
+
+    def fail(*args, **kwargs):
+        raise AssertionError("reference must not call custom QLI")
+
+    monkeypatch.setattr(torch.ops.npu, "sgl_quant_lightning_indexer_packed", fail)
+    monkeypatch.setattr(torch.ops.npu, "npu_quant_lightning_indexer", fail)
+    assert quant_lightning_indexer_packed(*args, topk=8, impl="torch_native").shape == (
+        1,
+        1,
+        8,
+    )
+
+
+@pytest.mark.parametrize("impl", ["ascendc", "torch_native"])
+def test_hand_computed_scores(impl):
+    # Logical keys [-2, 1, 3, 2] have scales [1, 4, 1, 2]. With
+    # positive queries and unit head weights, the best scores tie at keys 1, 3.
+    q = torch.ones((1, 8, 128), device="npu").to(torch.float8_e4m3fn)
+    key = torch.zeros((1, 16, 128), device="npu")
+    key[0, :4] = torch.tensor([-2.0, 1.0, 3.0, 2.0], device="npu")[:, None]
+    key = key.to(torch.float8_e4m3fn)
+    scale = torch.ones((1, 16), device="npu")
+    scale[0, :4] = torch.tensor([1.0, 4.0, 1.0, 2.0], device="npu")
+    packed = torch.cat(
+        (key.view(torch.uint8).reshape(1, -1), scale.view(torch.uint8)), dim=1
+    )
+    args = (
+        q,
+        packed,
+        torch.ones((1, 8), dtype=torch.bfloat16, device="npu"),
+        torch.ones((1, 8), device="npu"),
+        torch.tensor([1], dtype=torch.int32, device="npu"),
+        torch.tensor([4], dtype=torch.int32, device="npu"),
+        torch.tensor([[0]], dtype=torch.int32, device="npu"),
+    )
+    actual = (
+        quant_lightning_indexer_packed(*args, topk=2, impl=impl)
+        .cpu()
+        .sort(dim=-1)
+        .values
+    )
+    torch.testing.assert_close(
+        actual, torch.tensor([[[1, 3]]], dtype=torch.int32, device="cpu")
+    )

@@ -5,6 +5,7 @@
 | Implementation | arch22 | arch35 |
 | --- | --- | --- |
 | ascendc (also auto) | Unsupported | Ascend950DT, CANN 9.1.0 |
+| torch_native | Not registered / not validated | Validated on Ascend950DT |
 
 ## Signature
 
@@ -48,7 +49,7 @@ All tensor arguments are contiguous ND tensors on the same NPU.
 | block_table | INT32 `[B,max_pages]`, physical page IDs; max_pages > 0. |
 | topk | int, 1 through 2048; default 2048. |
 | sparse_mode | int, 0 for unmasked or 3 for causal; default 3. |
-| impl | str, `auto` or `ascendc`; default `auto`. |
+| impl | str, `auto`, `ascendc`, or `torch_native`; default `auto`. |
 
 Lengths and page IDs must describe valid entries in the supplied buffers;
 the adapter validates metadata without reading these device values on the host.
@@ -69,6 +70,23 @@ FakeTensor registration lives in the public module. Tests cover asynchronous
 execution and NPU graph replay; full torch.compile and model-level validation
 are not claimed. The external separate-cache CANN QLI is the regression
 reference; `auto` and `ascendc` are aliases, not independent implementations.
+
+## PyTorch reference
+
+Select `impl="torch_native"` for an independent implementation using ordinary
+PyTorch operations: unpack paged FP8 keys and FP32 scales, compute FP32 dot
+products, apply ReLU and head weights/scales, round scores to BF16, and select
+Top-k. Equal scores prefer smaller logical key indices. Selected indices are
+returned in ascending index order; missing entries are padded with -1.
+AscendC preserves its native output order, so compare selected sets rather than
+positions across backends. Floating-point accumulation near a BF16 rounding
+boundary may also affect selection.
+
+The reference reads sequence lengths/page validation values on the host and
+synchronizes the device. It is intended for correctness checking, not production
+performance, FakeTensor, torch.compile, or NPU Graph capture. `auto` still selects
+AscendC without fallback. Tests compare both implementations across page sizes,
+head counts, batch requests, mask modes, ties, empty input, and short sequences.
 
 ## Example
 

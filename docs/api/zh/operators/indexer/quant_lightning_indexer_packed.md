@@ -5,6 +5,7 @@
 | 实现 | arch22 | arch35 |
 | --- | --- | --- |
 | ascendc（也是 auto） | 不支持 | Ascend950DT，CANN 9.1.0 |
+| torch_native | 未注册、未验证 | 已在 Ascend950DT 验证 |
 
 ## 签名
 
@@ -47,7 +48,7 @@ quant_lightning_indexer_packed(
 | block_table | INT32 `[B,max_pages]`，物理页号，max_pages > 0。 |
 | topk | int，范围 [1,2048]，默认 2048。 |
 | sparse_mode | int，0 为无掩码，3 为因果模式，默认 3。 |
-| impl | str，`auto` 或 `ascendc`，默认 `auto`。 |
+| impl | str，`auto`、`ascendc` 或 `torch_native`，默认 `auto`。 |
 
 长度及页号必须对应输入缓冲区内的有效条目。适配层检查元数据，不在 host 读取这些设备值。
 形状推导出的 tiling 维度须可用 uint32 表示；T 为 0 时返回空输出。
@@ -65,6 +66,19 @@ quant_lightning_indexer_packed(
 并使用支持 graph 的 workspace 分配方式。FakeTensor 注册位于公开接口模块。
 测试覆盖异步执行与 NPU graph replay，不代表已验证完整 torch.compile 或模型运行。
 精度回归参考是独立缓存版 CANN QLI；`auto` 与 `ascendc` 是同一实现的别名。
+
+## PyTorch 参考实现
+
+通过 `impl="torch_native"` 选择独立的 PyTorch 实现：解包分页 FP8 key 和 FP32
+scale，使用 FP32 计算点积、ReLU、head 权重和反量化 scale，将分数转为 BF16 后
+选取 Top-k。同分时优先选择较小的逻辑 key 索引，结果按索引升序输出，不足部分填 -1。
+AscendC 保留原生输出顺序，因此跨实现比较选中集合，不要求排列相同；
+BF16 舍入边界附近的浮点累加差异也可能影响选择。
+
+参考实现读取序列长度及页号校验值时会同步到 host，用于正确性验证，
+不用于生产性能、FakeTensor、torch.compile 或 NPU Graph capture。
+`auto` 仍选择 AscendC，不自动回退。测试覆盖不同页大小、head 数、batch、
+掩码模式、同分、空输入和短序列下两种实现的结果。
 
 ## 示例
 
