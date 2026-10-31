@@ -383,6 +383,20 @@ ascendc_compile_options(sparse_flash_attention_kernel PRIVATE
     "SHELL:-mllvm -cce-aicore-hoist-movemask=false"
 )
 
+# A5 packed QLI shares its computation headers with the CANN/ACLNN build.
+# Only the direct-launch entry and host adapter differ between build paths.
+if(SGL_KERNEL_ENABLE_A5_ONLY_OPS)
+    set(QLI_PACKED_DIR ${PROJECT_OP_SRC_BASE}/indexer/quant_lightning_indexer_packed)
+    list(APPEND OP_SRCS ${QLI_PACKED_DIR}/legacy/torch_adapter.cpp)
+    ascendc_library(qli_packed_kernel STATIC ${QLI_PACKED_DIR}/legacy/kernel.cpp)
+    ascendc_compile_options(qli_packed_kernel PRIVATE
+        --cce-auto-sync=off
+        -Wno-deprecated-declarations
+        "SHELL:-mllvm -cce-vf-remove-membar=false"
+        "SHELL:-mllvm -cce-aicore-hoist-movemask=false")
+    list(APPEND A5_ONLY_KERNEL_TARGETS qli_packed_kernel)
+endif()
+
 # create shared library
 add_library(${OP_PLUGIN_NAME} SHARED ${OP_SRCS})
 

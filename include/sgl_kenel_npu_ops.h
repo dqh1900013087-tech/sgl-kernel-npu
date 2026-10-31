@@ -213,6 +213,11 @@ std::tuple<at::Tensor, at::Tensor> sparse_attn_sharedkv(
 at::Tensor tri_inv_col_sweep(const at::Tensor &tensor_in);
 
 #ifdef SGL_KERNEL_ENABLE_A5_ONLY_OPS
+at::Tensor quant_lightning_indexer_packed(
+    const at::Tensor& query, const at::Tensor& packed_cache, const at::Tensor& weights,
+    const at::Tensor& query_scale, const at::Tensor& seq_q, const at::Tensor& seq_k,
+    const at::Tensor& block_table, int64_t topk, int64_t sparse_mode);
+
 std::tuple<at::Tensor, at::Tensor> kv_quant_sparse_attn_sharedkv(
     const at::Tensor &q, const c10::optional<at::Tensor> &ori_kv,
     const c10::optional<at::Tensor> &cmp_kv,

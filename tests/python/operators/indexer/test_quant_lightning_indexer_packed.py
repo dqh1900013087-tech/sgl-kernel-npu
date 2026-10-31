@@ -1,4 +1,4 @@
-"""Ascend 950 FP8 integration checks; uses the unified CANN/ACLNN build."""
+"""Ascend 950 FP8 integration checks for ACLNN and legacy direct-launch wheels."""
 
 import importlib.util
 
@@ -152,14 +152,20 @@ def test_existing_registration():
     assert importlib.util.find_spec("qli_packed") is None
 
 
-def test_unified_vendor_library():
+def test_packaged_native_library():
     from pathlib import Path
 
     args, k, scale = generate_data(kv=256, topk=256)
     compare(args, k, scale, 256)
     maps = Path("/proc/self/maps").read_text()
     assert "libsgl_kernel_npu.so" in maps
-    assert "_cann/vendors/sgl_kernel_npu/op_api/lib/libcust_opapi.so" in maps
+    package = Path(sgl_kernel_npu.__file__).parent
+    if (package / "_cann").is_dir():
+        assert "_cann/vendors/sgl_kernel_npu/op_api/lib/libcust_opapi.so" in maps
+    else:
+        # Legacy wheel must retain the NEXTN dependency alongside packed QLI.
+        assert hasattr(torch.ops.npu, "build_tree_kernel_efficient")
+        assert "_cann/vendors/sgl_kernel_npu/op_api/lib/libcust_opapi.so" not in maps
     assert "sgl_qli_packed/op_api/lib/libcust_opapi.so" not in maps
 
 

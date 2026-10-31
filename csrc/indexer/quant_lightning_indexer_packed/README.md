@@ -1,7 +1,8 @@
 # Packed Quant Lightning Indexer
 
 Ascend950 FP8 DSA indexing with FP8 keys and FP32 scales in one physical cache
-page. This operator uses the shared CANN/ACLNN build introduced by PR #880.
+page. Supports both the shared CANN/ACLNN build introduced by PR #880 and
+the legacy direct-launch build on Ascend950.
 
 ## Build
 
@@ -16,8 +17,19 @@ python3 setup.py --arch-version 3510 --ops quant_lightning_indexer_packed --make
 The wheel is written to `output/`. Install it into the Python environment used
 by the consumer. Selected wheels replace one another; they do not accumulate
 operators. The new wheel includes migrated native operators only, not all
-legacy native bindings. `build.sh` retains its existing behavior and does not
-build Packed QLI. Explicit selection on arch2201 is rejected.
+legacy native bindings. For SGLang with NEXTN, build the legacy wheel to retain
+`build_tree_kernel_efficient` and the other existing native operators:
+
+```bash
+bash build.sh -a kernels Ascend950
+python3 -m pip install --force-reinstall --no-deps \
+  output/sgl_kernel_npu-2026.9.0-cp312-cp312-linux_aarch64.whl
+```
+
+Use the exact legacy wheel filename printed by the build (version/Python tags
+may vary), not a wildcard that also selects a previous refactor wheel.
+`build.sh` itself is unchanged. Explicit QLI selection on arch2201 is rejected;
+the legacy build includes QLI only in its A5 operator group.
 
 ## Integration
 
@@ -34,6 +46,16 @@ from the shared `_cann/vendors/sgl_kernel_npu` vendor. The existing package
 initializer prepares that vendor before loading the unified Torch library.
 There is no QLI-specific root import, environment variable or private vendor.
 
+## Legacy integration
+
+`legacy/kernel.cpp` is the direct-launch entry, sharing the computation headers
+and tiling structure in `op_kernel/` with ACLNN. `legacy/torch_adapter.cpp`
+validates metadata, allocates workspace, records streams and passes shape-only
+tiling by value. `cmake/legacy_kernels.cmake` compiles this target with manual
+synchronization options. The existing A5 blocks in `pytorch_extensions.cpp`
+register the same schema. Each build selects one adapter, so QLI and bitmask
+are not registered twice. The legacy wheel needs no bundled CANN vendor.
+
 ## Public interface
 
 ```python
@@ -44,7 +66,8 @@ indices = quant_lightning_indexer_packed(
 )
 ```
 
-`auto` and `ascendc` select the same ACLNN backend on arch35. Neither the old
+`auto` and `ascendc` select the native implementation packaged in the wheel
+on arch35 (ACLNN or direct launch). Neither the old
 `indexer/` compatibility module nor a top-level function export is provided.
 See the [English API](../../../docs/api/en/operators/indexer/quant_lightning_indexer_packed.md)
 and [Chinese API](../../../docs/api/zh/operators/indexer/quant_lightning_indexer_packed.md)

@@ -20,7 +20,9 @@ quant_lightning_indexer_packed(
 
 `auto` 选择 `ascendc`，没有自动回退。使用仓库根目录的
 `python3 setup.py --arch-version 3510` 构建，也可通过
-`--ops quant_lightning_indexer_packed` 单独选择。旧 `build.sh` 不包含此算子。
+`--ops quant_lightning_indexer_packed` 单独选择。若需要原有算子（包括 NEXTN 依赖）和 QLI，使用
+`bash build.sh -a kernels Ascend950`，安装该次构建的 wheel。
+新旧 wheel 会互相替换，不能通过依次安装叠加算子。
 
 ## 描述
 
@@ -66,6 +68,9 @@ quant_lightning_indexer_packed(
 并使用支持 graph 的 workspace 分配方式。FakeTensor 注册位于公开接口模块。
 测试覆盖异步执行与 NPU graph replay，不代表已验证完整 torch.compile 或模型运行。
 精度回归参考是独立缓存版 CANN QLI；`auto` 与 `ascendc` 是同一实现的别名。
+
+旧构建通过直调适配层复用同一套计算内核头文件，在已有 A5 区块注册相同的
+Torch 接口，同时保留其他旧算子，不需要打包 ACLNN vendor。
 
 ## PyTorch 参考实现
 

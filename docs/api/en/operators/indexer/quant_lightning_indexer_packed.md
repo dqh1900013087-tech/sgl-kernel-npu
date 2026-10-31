@@ -20,7 +20,9 @@ quant_lightning_indexer_packed(
 
 `auto` selects `ascendc`; there is no automatic fallback. Build with repository-root
 `python3 setup.py --arch-version 3510`, or explicitly select
-`--ops quant_lightning_indexer_packed`. The legacy `build.sh` does not include it.
+`--ops quant_lightning_indexer_packed`. For legacy operators plus QLI (including NEXTN dependencies), use
+`bash build.sh -a kernels Ascend950` instead and install that build's wheel.
+The two wheels replace each other; they are not additive.
 
 ## Description
 
@@ -70,6 +72,10 @@ FakeTensor registration lives in the public module. Tests cover asynchronous
 execution and NPU graph replay; full torch.compile and model-level validation
 are not claimed. The external separate-cache CANN QLI is the regression
 reference; `auto` and `ascendc` are aliases, not independent implementations.
+
+The legacy build uses a direct-launch adapter and the same computation headers,
+registering the same Torch schema in the existing A5 block. It retains the
+other legacy operators, without requiring the ACLNN vendor bundle.
 
 ## PyTorch reference
 
