@@ -383,8 +383,25 @@ ascendc_compile_options(sparse_flash_attention_kernel PRIVATE
     "SHELL:-mllvm -cce-aicore-hoist-movemask=false"
 )
 
-# create shared library
+# Packed QLI uses the existing AscendC direct-launch pipeline on A5.
+if(SGL_KERNEL_ENABLE_A5_ONLY_OPS)
+    list(APPEND OP_SRCS ${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed/op_host/quant_lightning_indexer_packed.cpp)
+    ascendc_library(qli_packed_kernel STATIC
+        ${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed/op_kernel/quant_lightning_indexer.cpp)
+    ascendc_compile_options(qli_packed_kernel PRIVATE
+        --cce-auto-sync=off
+        -Wno-deprecated-declarations
+        "SHELL:-mllvm -cce-vf-remove-membar=false"
+        "SHELL:-mllvm -cce-aicore-hoist-movemask=false")
+    list(APPEND A5_ONLY_KERNEL_TARGETS qli_packed_kernel)
+    configure_file(${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed/LICENSE.ops-transformer
+        ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/LICENSE.qli-ops-transformer COPYONLY)
+    configure_file(${PROJECT_OP_SRC_BASE}/quant_lightning_indexer_packed/source-manifest.json
+        ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/qli-source-manifest.json COPYONLY)
+endif()
+
 add_library(${OP_PLUGIN_NAME} SHARED ${OP_SRCS})
+
 
 target_link_libraries(${OP_PLUGIN_NAME} PRIVATE
         ${A3_ONLY_KERNEL_TARGETS}
